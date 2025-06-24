@@ -11,7 +11,123 @@ enum WeebiProductType {
   final String displayName;
 }
 
-/// Enhanced product model with multi-language support and multi-database compatibility
+/// Price information from Open Prices API
+class WeebiPrice {
+  /// Price value
+  final double price;
+  
+  /// Currency code (EUR, USD, etc.)
+  final String currency;
+  
+  /// Store/location where price was recorded
+  final String? storeName;
+  
+  /// Store brand/chain
+  final String? storeBrand;
+  
+  /// Location (city, country)
+  final String? location;
+  
+  /// Date when price was recorded
+  final DateTime date;
+  
+  /// Price per unit (if applicable)
+  final double? pricePerUnit;
+  
+  /// Unit (kg, L, etc.)
+  final String? unit;
+  
+  /// Whether this is a promotional price
+  final bool isPromo;
+  
+  /// Source of the price data
+  final String source;
+  
+  const WeebiPrice({
+    required this.price,
+    required this.currency,
+    this.storeName,
+    this.storeBrand,
+    this.location,
+    required this.date,
+    this.pricePerUnit,
+    this.unit,
+    this.isPromo = false,
+    this.source = 'Open Prices',
+  });
+  
+  /// Create from Open Prices API response
+  factory WeebiPrice.fromOpenPrices(Map<String, dynamic> json) {
+    return WeebiPrice(
+      price: (json['price'] as num).toDouble(),
+      currency: json['currency'] ?? 'EUR',
+      storeName: json['location_osm_name'],
+      storeBrand: json['location_osm_display_name'],
+      location: json['location_osm_address_city'],
+      date: DateTime.parse(json['date']),
+      pricePerUnit: json['price_per'] != null ? (json['price_per'] as num).toDouble() : null,
+      unit: json['price_per_unit'],
+      isPromo: json['labels_tags']?.contains('en:promotion') ?? false,
+      source: 'Open Prices',
+    );
+  }
+  
+  @override
+  String toString() {
+    return '$price $currency${storeName != null ? ' at $storeName' : ''}';
+  }
+}
+
+/// Price statistics for a product
+class WeebiPriceStats {
+  /// Current average price
+  final double? averagePrice;
+  
+  /// Minimum price found
+  final double? minPrice;
+  
+  /// Maximum price found
+  final double? maxPrice;
+  
+  /// Number of price records
+  final int priceCount;
+  
+  /// Currency for the statistics
+  final String currency;
+  
+  /// Last updated date
+  final DateTime? lastUpdated;
+  
+  const WeebiPriceStats({
+    this.averagePrice,
+    this.minPrice,
+    this.maxPrice,
+    required this.priceCount,
+    required this.currency,
+    this.lastUpdated,
+  });
+  
+  /// Create from multiple price records
+  factory WeebiPriceStats.fromPrices(List<WeebiPrice> prices) {
+    if (prices.isEmpty) {
+      return const WeebiPriceStats(priceCount: 0, currency: 'EUR');
+    }
+    
+    final priceValues = prices.map((p) => p.price).toList();
+    final currency = prices.first.currency;
+    
+    return WeebiPriceStats(
+      averagePrice: priceValues.reduce((a, b) => a + b) / priceValues.length,
+      minPrice: priceValues.reduce((a, b) => a < b ? a : b),
+      maxPrice: priceValues.reduce((a, b) => a > b ? a : b),
+      priceCount: prices.length,
+      currency: currency,
+      lastUpdated: prices.map((p) => p.date).reduce((a, b) => a.isAfter(b) ? a : b),
+    );
+  }
+}
+
+/// Enhanced product model with multi-language support and pricing data
 class WeebiProduct {
   /// Product barcode
   final String barcode;
@@ -28,17 +144,14 @@ class WeebiProduct {
   /// Ingredients text (in the fetched language)
   final String? ingredients;
   
-  /// List of allergens (mainly for food products)
+  /// List of allergens
   final List<String> allergens;
   
-  /// Nutri-Score (A, B, C, D, E) - Food products only
+  /// Nutri-Score (A, B, C, D, E)
   final String? nutriScore;
   
-  /// NOVA group (1-4, food processing level) - Food products only
+  /// NOVA group (1-4, food processing level)
   final int? novaGroup;
-  
-  /// Period after opening (cosmetics only) - e.g., "12M", "6M"
-  final String? periodAfterOpening;
   
   /// Main product image URL
   final String? imageUrl;
@@ -46,18 +159,31 @@ class WeebiProduct {
   /// Ingredients image URL
   final String? ingredientsImageUrl;
   
-  /// Nutrition facts image URL (food products)
+  /// Nutrition facts image URL
   final String? nutritionImageUrl;
   
-  /// Language this product data was fetched in
+  /// Language of the fetched data
   final WeebiLanguage language;
   
-  /// When this product was cached
+  /// When this product data was cached
   final DateTime cachedAt;
   
-  /// Original OpenFoodFacts product (for advanced usage)
-  final off.Product? originalProduct;
-
+  /// Current price information (latest available)
+  final WeebiPrice? currentPrice;
+  
+  /// Recent price history (last 30 days)
+  final List<WeebiPrice> recentPrices;
+  
+  /// Price statistics
+  final WeebiPriceStats? priceStats;
+  
+  /// Whether price data is available for this product
+  bool get hasPriceData => currentPrice != null || recentPrices.isNotEmpty;
+  
+  /// Cosmetic-specific fields (for beauty products)
+  final String? periodAfterOpening;
+  final List<String> cosmeticIngredients;
+  
   const WeebiProduct({
     required this.barcode,
     required this.productType,
@@ -67,21 +193,27 @@ class WeebiProduct {
     this.allergens = const [],
     this.nutriScore,
     this.novaGroup,
-    this.periodAfterOpening,
     this.imageUrl,
     this.ingredientsImageUrl,
     this.nutritionImageUrl,
     required this.language,
     required this.cachedAt,
-    this.originalProduct,
+    this.currentPrice,
+    this.recentPrices = const [],
+    this.priceStats,
+    this.periodAfterOpening,
+    this.cosmeticIngredients = const [],
   });
 
-  /// Create from OpenFoodFacts product with type detection
+  /// Create from OpenFoodFacts API response
   factory WeebiProduct.fromOpenFoodFacts(
     off.Product product, 
     WeebiLanguage language,
-    WeebiProductType productType,
-  ) {
+    WeebiProductType productType, {
+    WeebiPrice? currentPrice,
+    List<WeebiPrice> recentPrices = const [],
+    WeebiPriceStats? priceStats,
+  }) {
     return WeebiProduct(
       barcode: product.barcode ?? '',
       productType: productType,
@@ -89,150 +221,53 @@ class WeebiProduct {
       brand: product.brands,
       ingredients: product.ingredientsText,
       allergens: product.allergens?.names ?? [],
-      nutriScore: productType == WeebiProductType.food ? product.nutriscore : null,
-      novaGroup: productType == WeebiProductType.food ? product.novaGroup : null,
-      periodAfterOpening: _extractPeriodAfterOpening(product),
+      nutriScore: product.nutriscore?.toUpperCase(),
+      novaGroup: product.novaGroup,
       imageUrl: product.imageFrontUrl,
       ingredientsImageUrl: product.imageIngredientsUrl,
-      nutritionImageUrl: productType == WeebiProductType.food ? product.imageNutritionUrl : null,
+      nutritionImageUrl: product.imageNutritionUrl,
       language: language,
       cachedAt: DateTime.now(),
-      originalProduct: product,
+      currentPrice: currentPrice,
+      recentPrices: recentPrices,
+      priceStats: priceStats,
+      // Cosmetic fields (for future beauty products)
+      periodAfterOpening: null, // TODO: Extract from product data
+      cosmeticIngredients: [], // TODO: Parse cosmetic ingredients
     );
   }
 
-  /// Extract period after opening for cosmetic products
-  static String? _extractPeriodAfterOpening(off.Product product) {
-    // This would extract from product.misc or other fields
-    // The exact field name needs to be verified from the API
-    return null; // TODO: Implement based on actual API response
-  }
-
-  /// Create from JSON (for caching)
-  factory WeebiProduct.fromJson(Map<String, dynamic> json) {
-    return WeebiProduct(
-      barcode: json['barcode'] as String,
-      productType: WeebiProductType.values.firstWhere(
-        (type) => type.name == json['productType'],
-        orElse: () => WeebiProductType.general,
-      ),
-      name: json['name'] as String?,
-      brand: json['brand'] as String?,
-      ingredients: json['ingredients'] as String?,
-      allergens: (json['allergens'] as List<dynamic>?)?.cast<String>() ?? [],
-      nutriScore: json['nutriScore'] as String?,
-      novaGroup: json['novaGroup'] as int?,
-      periodAfterOpening: json['periodAfterOpening'] as String?,
-      imageUrl: json['imageUrl'] as String?,
-      ingredientsImageUrl: json['ingredientsImageUrl'] as String?,
-      nutritionImageUrl: json['nutritionImageUrl'] as String?,
-      language: WeebiLanguage.fromCode(json['language'] as String) ?? WeebiLanguage.english,
-      cachedAt: DateTime.parse(json['cachedAt'] as String),
-    );
-  }
-
-  /// Convert to JSON (for caching)
-  Map<String, dynamic> toJson() {
-    return {
-      'barcode': barcode,
-      'productType': productType.name,
-      'name': name,
-      'brand': brand,
-      'ingredients': ingredients,
-      'allergens': allergens,
-      'nutriScore': nutriScore,
-      'novaGroup': novaGroup,
-      'periodAfterOpening': periodAfterOpening,
-      'imageUrl': imageUrl,
-      'ingredientsImageUrl': ingredientsImageUrl,
-      'nutritionImageUrl': nutritionImageUrl,
-      'language': language.code,
-      'cachedAt': cachedAt.toIso8601String(),
-    };
-  }
-
-  /// Check if product has basic information
-  bool get hasBasicInfo => name != null || brand != null;
-
-  /// Check if product has nutrition information (food products)
-  bool get hasNutritionInfo => nutriScore != null || novaGroup != null;
-
-  /// Check if product has allergen information
-  bool get hasAllergenInfo => allergens.isNotEmpty;
-
-  /// Check if product has ingredient information
-  bool get hasIngredientInfo => ingredients != null && ingredients!.isNotEmpty;
-
-  /// Check if product has cosmetic-specific information
-  bool get hasCosmeticInfo => periodAfterOpening != null;
-
-  /// Check if cache is still valid (based on age)
-  bool isCacheValid(Duration maxAge) {
-    return DateTime.now().difference(cachedAt) <= maxAge;
-  }
-
-  /// Get display text for product type
-  String get productTypeDisplay => productType.displayName;
-
-  /// Check if this is a food product
-  bool get isFood => productType == WeebiProductType.food;
-
-  /// Check if this is a beauty/cosmetic product
-  bool get isBeauty => productType == WeebiProductType.beauty;
-
-  /// Check if this is a general product
-  bool get isGeneral => productType == WeebiProductType.general;
-
-  /// Copy with updated values
-  WeebiProduct copyWith({
-    String? barcode,
-    WeebiProductType? productType,
-    String? name,
-    String? brand,
-    String? ingredients,
-    List<String>? allergens,
-    String? nutriScore,
-    int? novaGroup,
-    String? periodAfterOpening,
-    String? imageUrl,
-    String? ingredientsImageUrl,
-    String? nutritionImageUrl,
-    WeebiLanguage? language,
-    DateTime? cachedAt,
-    off.Product? originalProduct,
+  /// Create a copy with updated price data
+  WeebiProduct copyWithPrices({
+    WeebiPrice? currentPrice,
+    List<WeebiPrice>? recentPrices,
+    WeebiPriceStats? priceStats,
   }) {
     return WeebiProduct(
-      barcode: barcode ?? this.barcode,
-      productType: productType ?? this.productType,
-      name: name ?? this.name,
-      brand: brand ?? this.brand,
-      ingredients: ingredients ?? this.ingredients,
-      allergens: allergens ?? this.allergens,
-      nutriScore: nutriScore ?? this.nutriScore,
-      novaGroup: novaGroup ?? this.novaGroup,
-      periodAfterOpening: periodAfterOpening ?? this.periodAfterOpening,
-      imageUrl: imageUrl ?? this.imageUrl,
-      ingredientsImageUrl: ingredientsImageUrl ?? this.ingredientsImageUrl,
-      nutritionImageUrl: nutritionImageUrl ?? this.nutritionImageUrl,
-      language: language ?? this.language,
-      cachedAt: cachedAt ?? this.cachedAt,
-      originalProduct: originalProduct ?? this.originalProduct,
+      barcode: barcode,
+      productType: productType,
+      name: name,
+      brand: brand,
+      ingredients: ingredients,
+      allergens: allergens,
+      nutriScore: nutriScore,
+      novaGroup: novaGroup,
+      imageUrl: imageUrl,
+      ingredientsImageUrl: ingredientsImageUrl,
+      nutritionImageUrl: nutritionImageUrl,
+      language: language,
+      cachedAt: cachedAt,
+      currentPrice: currentPrice ?? this.currentPrice,
+      recentPrices: recentPrices ?? this.recentPrices,
+      priceStats: priceStats ?? this.priceStats,
+      periodAfterOpening: periodAfterOpening,
+      cosmeticIngredients: cosmeticIngredients,
     );
   }
 
   @override
   String toString() {
-    return 'WeebiProduct(barcode: $barcode, name: $name, brand: $brand, language: ${language.displayName})';
+    final priceInfo = currentPrice != null ? ' - ${currentPrice.toString()}' : '';
+    return '${name ?? 'Unknown Product'} (${barcode})$priceInfo';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is WeebiProduct &&
-        other.barcode == barcode &&
-        other.language == language;
-  }
-
-  @override
-  int get hashCode => Object.hash(barcode, language);
 } 

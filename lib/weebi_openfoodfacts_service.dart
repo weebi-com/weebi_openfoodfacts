@@ -1,41 +1,38 @@
-/// Advanced OpenFoodFacts integration with multi-language support,
-/// image caching, and offline capabilities.
+/// Weebi OpenFoodFacts Service
 /// 
-/// This package provides a comprehensive wrapper around the OpenFoodFacts API
-/// with enhanced features for production applications:
+/// A comprehensive, reusable Flutter package for integrating with OpenFoodFacts API 
+/// with advanced features like multi-language support, intelligent caching, 
+/// and Open Prices integration for real-world pricing data.
 /// 
-/// - **Multi-language support**: Automatic language detection and fallbacks
-/// - **Image caching**: Local caching of product images for offline use
-/// - **Product caching**: SQLite-based local product database
-/// - **Smart fallbacks**: Graceful degradation when API is unavailable
-/// - **Rate limiting**: Built-in API rate limiting and request optimization
+/// Features:
+/// - OpenFoodFacts API integration (2.9M+ food products)
+/// - Open Prices API integration (crowdsourced pricing data)
+/// - Multi-language support (10+ languages with automatic fallbacks)
+/// - Advanced caching (product & image caching for offline support)
+/// - Framework-agnostic design for maximum reusability
+/// - Production-ready error handling and validation
 /// 
-/// ## Usage
-/// 
-/// ```dart
-/// import 'package:weebi_openfoodfacts_service/weebi_openfoodfacts_service.dart';
-/// 
-/// // Initialize the service
-/// await WeebiOpenFoodFactsService.initialize(
-///   appName: 'Your App Name',
-///   preferredLanguages: [WeebiLanguage.english, WeebiLanguage.french],
-///   cacheConfig: CacheConfig.production,
-/// );
-/// 
-/// // Get product information
-/// final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
-/// 
-/// // Get cached image
-/// final imagePath = await WeebiOpenFoodFactsService.getCachedImagePath(product?.imageUrl);
-/// ```
+/// Future expansion ready for:
+/// - OpenBeautyFacts (cosmetic products)
+/// - OpenProductsFacts (general products)
 library weebi_openfoodfacts_service;
 
+// Core service
 export 'src/weebi_openfoodfacts_client.dart';
+
+// Open Prices integration
+export 'src/open_prices_client.dart';
+
+// Models
+export 'src/models/weebi_product.dart';
+export 'src/models/weebi_language.dart';
+export 'src/models/cache_config.dart';
+
+// Utilities
+export 'src/utils/barcode_validator.dart';
+export 'src/utils/nutrition_helper.dart';
+
+// Cache managers (for advanced usage)
 export 'src/product_cache_manager.dart';
 export 'src/image_cache_manager.dart';
 export 'src/language_manager.dart';
-export 'src/models/weebi_product.dart';
-export 'src/models/cache_config.dart';
-export 'src/models/weebi_language.dart';
-export 'src/utils/barcode_validator.dart';
-export 'src/utils/nutrition_helper.dart';

@@ -13,16 +13,25 @@ and the Flutter guide for
 
 # Weebi OpenFoodFacts Service
 
-A comprehensive, reusable Flutter package for integrating with OpenFoodFacts API with advanced features like multi-language support, intelligent caching, and a foundation for multi-database support.
+A comprehensive, reusable Flutter package for integrating with OpenFoodFacts API with advanced features like multi-language support, intelligent caching, and **Open Prices integration** for real-world pricing data.
 
 ## 🌟 Features
 
 ### **Current Capabilities**
 - **OpenFoodFacts Integration**: Full access to 2.9M+ food products
+- **🆕 Open Prices Integration**: Real-world pricing data from crowdsourced receipts
 - **Multi-Language Support**: 10+ languages with automatic fallbacks
 - **Advanced Caching**: Product and image caching for offline support
 - **Framework-Agnostic**: Can be used in any Flutter project
 - **Production Ready**: Comprehensive error handling and validation
+
+### **🧾 Open Prices Features**
+- **Real-time Pricing**: Current prices from actual stores
+- **Price History**: Track price changes over time
+- **Store Locations**: Find products at specific stores
+- **Price Statistics**: Average, min/max prices with trends
+- **Crowdsourced Data**: Community-driven price validation
+- **Receipt Integration**: Submit prices from receipts (with auth)
 
 ### **Architecture Foundation for Future Expansion**
 - **Multi-Database Ready**: Built with extensibility for OpenBeautyFacts and OpenProductsFacts
@@ -32,11 +41,11 @@ A comprehensive, reusable Flutter package for integrating with OpenFoodFacts API
 
 ## 🚀 Current Database Support
 
-| Database | Products | Status | Description |
-|----------|----------|---------|-------------|
-| **OpenFoodFacts** | 2.9M+ | ✅ **Active** | Food products with nutrition data |
-| **OpenBeautyFacts** | 19K+ | 🔧 **Planned** | Cosmetic and beauty products |
-| **OpenProductsFacts** | 11K+ | 🔧 **Planned** | General consumer products |
+| Database | Products | Pricing | Status | Description |
+|----------|----------|---------|---------|-------------|
+| **OpenFoodFacts** | 2.9M+ | ✅ **Yes** | ✅ **Active** | Food products with nutrition + pricing data |
+| **OpenBeautyFacts** | 19K+ | 🔧 **Planned** | 🔧 **Planned** | Cosmetic and beauty products |
+| **OpenProductsFacts** | 11K+ | 🔧 **Planned** | 📋 **Planned** | General consumer products |
 
 ## 📦 Installation
 
@@ -66,13 +75,15 @@ await WeebiOpenFoodFactsService.initialize(
     WeebiLanguage.spanish,
   ],
   cacheConfig: CacheConfig.production,
+  enablePricing: true, // 🆕 Enable Open Prices integration
+  // openPricesAuthToken: 'your_token_here', // For submitting prices
 );
 ```
 
-### 2. Get Product Information
+### 2. Get Product with Pricing Information
 
 ```dart
-// Get a food product
+// Get a food product with pricing data
 final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
 
 if (product != null) {
@@ -80,8 +91,40 @@ if (product != null) {
   print('Brand: ${product.brand}');
   print('Nutri-Score: ${product.nutriScore}');
   print('NOVA Group: ${product.novaGroup}');
-  print('Allergens: ${product.allergens.join(', ')}');
+  
+  // 🆕 Pricing information
+  if (product.hasPriceData) {
+    print('Current Price: ${product.currentPrice}');
+    print('Price Stats: ${product.priceStats?.averagePrice} EUR avg');
+    print('Recent Prices: ${product.recentPrices.length} records');
+  }
 }
+```
+
+### 3. Advanced Pricing Queries
+
+```dart
+// Get latest price for a product
+final latestPrice = await WeebiOpenFoodFactsService.getLatestPrice('3017620422003');
+print('Latest: ${latestPrice?.price} ${latestPrice?.currency} at ${latestPrice?.storeName}');
+
+// Get price history
+final priceHistory = await WeebiOpenFoodFactsService.getPriceHistory(
+  '3017620422003',
+  limit: 30,
+  since: DateTime.now().subtract(Duration(days: 30)),
+);
+
+// Get price statistics
+final stats = await WeebiOpenFoodFactsService.getPriceStats('3017620422003');
+print('Average: ${stats?.averagePrice} EUR');
+print('Range: ${stats?.minPrice} - ${stats?.maxPrice} EUR');
+
+// Search products with prices in a location
+final productsWithPrices = await WeebiOpenFoodFactsService.searchProductsWithPrices(
+  location: 'Paris',
+  limit: 20,
+);
 ```
 
 ## 🌍 Multi-Language Support
@@ -149,9 +192,10 @@ print('Cache size: ${stats['images']['size']} bytes');
 The service is architected to support multiple product databases:
 
 ```dart
-// Current: Food products (OpenFoodFacts)
+// Current: Food products (OpenFoodFacts) with pricing
 final foodProduct = await WeebiOpenFoodFactsService.getFoodProduct('3017620422003');
 print('Type: ${foodProduct.productType}'); // WeebiProductType.food
+print('Price: ${foodProduct.currentPrice}'); // 🆕 Real pricing data
 
 // Future: Beauty products (OpenBeautyFacts) - Coming Soon
 // final beautyProduct = await WeebiOpenFoodFactsService.getBeautyProduct('3560070791460');
@@ -168,19 +212,35 @@ print('Type: ${foodProduct.productType}'); // WeebiProductType.food
 - ✅ **Safety**: Allergens, ingredients analysis
 - ✅ **Images**: Front, ingredients, nutrition facts
 - ✅ **Multi-language**: All data in preferred languages
+- ✅ **🆕 Pricing**: Current prices, price history, statistics
 
 ### Beauty Products (Planned)
 - 🔧 **Basic Info**: Name, brand, barcode
 - 🔧 **Cosmetic Data**: Period after opening, ingredients
 - 🔧 **Safety**: Allergen warnings, risk assessments
 - 🔧 **Images**: Product photos, ingredient lists
+- 🔧 **🆕 Pricing**: Beauty product pricing (future)
 
 ### General Products (Planned)
 - 🔧 **Basic Info**: Name, brand, barcode, category
 - 🔧 **Product Data**: Features, specifications
 - 🔧 **Images**: Product photos, documentation
+- 🔧 **🆕 Pricing**: General product pricing (future)
 
 ## 🔧 Advanced Usage
+
+### Performance Optimization
+
+```dart
+// Get product without pricing for faster response
+final product = await WeebiOpenFoodFactsService.getProductBasic('3017620422003');
+
+// Get product with pricing specifically
+final productWithPricing = await WeebiOpenFoodFactsService.getProductWithPricing(
+  '3017620422003',
+  location: 'Paris', // Optional location filter
+);
+```
 
 ### Error Handling
 
@@ -198,46 +258,61 @@ try {
 }
 ```
 
-### Barcode Validation
+### 🆕 Price Submission (Requires Authentication)
 
 ```dart
-// Check if barcode is valid
-if (WeebiOpenFoodFactsService.isLikelyFoodProduct('3017620422003')) {
-  final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
+// Set authentication token
+WeebiOpenFoodFactsService.setOpenPricesAuthToken('your_auth_token');
+
+// Submit a new price
+final success = await WeebiOpenFoodFactsService.submitPrice(
+  barcode: '3017620422003',
+  price: 3.45,
+  currency: 'EUR',
+  locationId: 'store_osm_id',
+  proofUrl: 'https://example.com/receipt.jpg', // Optional
+);
+
+if (success) {
+  print('Price submitted successfully!');
 }
 ```
 
-### Image Caching
+### Store Locations
 
 ```dart
-// Get cached image path
-final imagePath = await WeebiOpenFoodFactsService.getCachedImagePath(
-  product.imageUrl
-);
+// Get available store locations
+final locations = await WeebiOpenFoodFactsService.getStoreLocations();
+for (final location in locations) {
+  print('${location['osm_display_name']} - ${location['osm_address_city']}');
+}
 
-// Cache an image manually
-final cachedPath = await WeebiOpenFoodFactsService.cacheImage(
-  'https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.3.400.jpg'
-);
+// Check Open Prices API status
+final status = await WeebiOpenFoodFactsService.getOpenPricesStatus();
+print('API Status: ${status?['status']}');
 ```
 
 ## 🎯 Use Cases
 
 This package is perfect for:
 
-- **🛒 Point of Sale Systems**: Quick product lookup with offline support
-- **📱 Inventory Management**: Track products across multiple categories  
-- **🍽️ Recipe Applications**: Access nutritional information
-- **🏪 E-commerce Platforms**: Product data enrichment
-- **📊 Analytics Dashboards**: Consumer product insights
-- **🔍 Barcode Scanners**: Multi-database product identification
+- **🛒 Point of Sale Systems**: Product lookup with real-time pricing
+- **📱 Inventory Management**: Track products with cost analysis  
+- **🍽️ Recipe Applications**: Nutritional information + ingredient costs
+- **🏪 E-commerce Platforms**: Product data + competitive pricing
+- **📊 Price Comparison Apps**: Multi-store price tracking
+- **🔍 Smart Shopping Apps**: Barcode scanning with price alerts
+- **💰 Budget Tracking**: Food expense analysis with nutrition data
 
 ## 🚀 Roadmap
 
-### Phase 1: OpenFoodFacts (✅ Complete)
+### Phase 1: OpenFoodFacts + Open Prices (✅ Complete)
 - [x] Multi-language API integration
 - [x] Advanced caching system
 - [x] Comprehensive error handling
+- [x] **🆕 Open Prices integration**
+- [x] **🆕 Real-time pricing data**
+- [x] **🆕 Price history & statistics**
 - [x] Production-ready package
 
 ### Phase 2: OpenBeautyFacts (🔧 In Progress)
@@ -245,15 +320,19 @@ This package is perfect for:
 - [ ] Cosmetic-specific data fields
 - [ ] Period after opening support
 - [ ] Ingredient safety analysis
+- [ ] **🆕 Beauty product pricing**
 
 ### Phase 3: OpenProductsFacts (📋 Planned)
 - [ ] General product API integration
 - [ ] Product category system
 - [ ] Multi-database search
 - [ ] Unified product interface
+- [ ] **🆕 General product pricing**
 
 ### Phase 4: Advanced Features (🎯 Future)
-- [ ] Real-time synchronization
+- [ ] **🆕 Price alerts & notifications**
+- [ ] **🆕 Receipt scanning integration**
+- [ ] **🆕 Store loyalty program integration**
 - [ ] Machine learning recommendations
 - [ ] Custom taxonomy support
 - [ ] Enterprise features
@@ -274,6 +353,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [OpenFoodFacts](https://openfoodfacts.org) for the amazing open data
+- [**🆕 Open Prices**](https://prices.openfoodfacts.org) for crowdsourced pricing data
 - [OpenBeautyFacts](https://openbeautyfacts.org) for cosmetic product data
 - [OpenProductsFacts](https://openproductsfacts.org) for general product data
 - The Dart/Flutter community for excellent tooling

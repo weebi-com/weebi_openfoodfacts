@@ -1,7 +1,7 @@
 name: weebi_openfoodfacts_service
-description: "Advanced OpenFoodFacts integration with multi-language support, image caching, and offline capabilities. Private package for Weebi projects."
-version: 1.0.0
-repository: https://github.com/weebi-com/weebi_openfoodfacts_service
+description: "Advanced OpenFoodFacts integration with multi-language support, image caching, offline capabilities, and Open Prices integration for real-world pricing data."
+version: 1.1.0
+homepage: https://github.com/weebi-com/weebi_openfoodfacts
 
 environment:
   sdk: ^3.0.0
@@ -10,17 +10,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
+  # OpenFoodFacts API
   openfoodfacts: ^3.23.0
-  shared_preferences: ^2.2.2
-  path_provider: ^2.1.2
-  http: ^1.2.0
-  crypto: ^3.0.3
-  sqflite: ^2.3.0
+  
+  # HTTP client for Open Prices API
+  http: ^1.1.0
+  
+  # File handling and path utilities
+  path: ^1.8.0
+  path_provider: ^2.1.0
+  
+  # JSON serialization
+  json_annotation: ^4.8.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.6
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
