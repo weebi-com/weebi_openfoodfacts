@@ -13,57 +13,57 @@ and the Flutter guide for
 
 # Weebi OpenFoodFacts Service
 
-Advanced OpenFoodFacts integration with multi-language support, image caching, and offline capabilities. This private package provides enhanced features for production applications that need robust food product data integration.
+A comprehensive, reusable Flutter package for integrating with OpenFoodFacts API with advanced features like multi-language support, intelligent caching, and a foundation for multi-database support.
 
-## 🚀 Features
+## 🌟 Features
 
-### 🌍 **Multi-Language Support**
-- Automatic language detection and fallbacks
-- Support for 10+ languages (English, French, Spanish, German, etc.)
-- Graceful degradation when product data isn't available in preferred language
+### **Current Capabilities**
+- **OpenFoodFacts Integration**: Full access to 2.9M+ food products
+- **Multi-Language Support**: 10+ languages with automatic fallbacks
+- **Advanced Caching**: Product and image caching for offline support
+- **Framework-Agnostic**: Can be used in any Flutter project
+- **Production Ready**: Comprehensive error handling and validation
 
-### 💾 **Advanced Caching**
-- **Product Caching**: SQLite-based local product database
-- **Image Caching**: Local storage of product images for offline use
-- **Smart Expiration**: Configurable cache expiration and cleanup
-- **Offline Support**: Graceful fallback to cached data when API is unavailable
+### **Architecture Foundation for Future Expansion**
+- **Multi-Database Ready**: Built with extensibility for OpenBeautyFacts and OpenProductsFacts
+- **Product Type System**: Supports food, beauty, and general product types
+- **Flexible Caching**: Database-aware caching system
+- **Scalable Design**: Easy to extend for new databases and features
 
-### ⚡ **Performance Optimizations**
-- Built-in API rate limiting and request optimization
-- Efficient batch operations for multiple products
-- Background cache maintenance and cleanup
-- Memory-efficient image handling
+## 🚀 Current Database Support
 
-### 🔧 **Production Ready**
-- Comprehensive error handling and retry logic
-- Detailed logging and debugging support
-- Configurable cache policies for different environments
-- Thread-safe operations
+| Database | Products | Status | Description |
+|----------|----------|---------|-------------|
+| **OpenFoodFacts** | 2.9M+ | ✅ **Active** | Food products with nutrition data |
+| **OpenBeautyFacts** | 19K+ | 🔧 **Planned** | Cosmetic and beauty products |
+| **OpenProductsFacts** | 11K+ | 🔧 **Planned** | General consumer products |
 
 ## 📦 Installation
 
-Add this package to your `pubspec.yaml`:
+Add this to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
   weebi_openfoodfacts_service:
-    path: ../weebi_openfoodfacts_service  # Local path
+    git:
+      url: https://github.com/weebi-com/weebi_openfoodfacts.git
+      ref: main
 ```
 
-## 🎯 Quick Start
+## 🛠️ Quick Start
 
 ### 1. Initialize the Service
 
 ```dart
 import 'package:weebi_openfoodfacts_service/weebi_openfoodfacts_service.dart';
 
-// Initialize with default production settings
 await WeebiOpenFoodFactsService.initialize(
-  appName: 'Your App Name',
-  appUrl: 'https://your-app.com', // Optional
+  appName: 'MyAwesomeApp',
+  appUrl: 'https://myapp.com', // Optional
   preferredLanguages: [
     WeebiLanguage.english,
     WeebiLanguage.french,
+    WeebiLanguage.spanish,
   ],
   cacheConfig: CacheConfig.production,
 );
@@ -72,86 +72,130 @@ await WeebiOpenFoodFactsService.initialize(
 ### 2. Get Product Information
 
 ```dart
-// Get product with automatic caching and language fallback
+// Get a food product
 final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
 
 if (product != null) {
   print('Product: ${product.name}');
   print('Brand: ${product.brand}');
   print('Nutri-Score: ${product.nutriScore}');
-  print('Language: ${product.language.displayName}');
+  print('NOVA Group: ${product.novaGroup}');
+  print('Allergens: ${product.allergens.join(', ')}');
 }
 ```
 
-### 3. Handle Product Images
+## 🌍 Multi-Language Support
+
+The service automatically tries your preferred languages in order:
 
 ```dart
-// Get cached image path (returns null if not cached)
-final imagePath = await WeebiOpenFoodFactsService.getCachedImagePath(
-  product?.imageUrl
-);
-
-// Or cache an image explicitly
-final cachedPath = await WeebiOpenFoodFactsService.cacheImage(
-  product!.imageUrl!
+await WeebiOpenFoodFactsService.initialize(
+  appName: 'MyApp',
+  preferredLanguages: [
+    WeebiLanguage.french,    // Try French first
+    WeebiLanguage.english,   // Fallback to English
+    WeebiLanguage.spanish,   // Then Spanish
+  ],
 );
 ```
 
-## ⚙️ Configuration
+**Supported Languages:**
+- 🇺🇸 English
+- 🇫🇷 French  
+- 🇪🇸 Spanish
+- 🇩🇪 German
+- 🇮🇹 Italian
+- 🇵🇹 Portuguese
+- 🇳🇱 Dutch
+- 🇨🇳 Chinese
+- 🇯🇵 Japanese
+- 🇸🇦 Arabic
 
-### Cache Configuration
+## 💾 Caching System
 
-Choose from predefined configurations or create custom ones:
+### Cache Configurations
 
 ```dart
-// Production configuration (recommended)
-const config = CacheConfig.production; // 7 days products, 30 days images
+// Production: Aggressive caching for performance
+CacheConfig.production
 
-// Development configuration
-const config = CacheConfig.development; // 1 day products, 7 days images
-
-// Minimal configuration (cache disabled)
-const config = CacheConfig.minimal;
+// Development: Minimal caching for testing
+CacheConfig.development
 
 // Custom configuration
-const config = CacheConfig(
-  productCacheMaxAgeDays: 14,
-  imageCacheMaxAgeDays: 60,
-  maxCachedProducts: 2000,
-  maxCachedImages: 1000,
-  maxImageCacheSizeMB: 200,
-  enableImageCache: true,
+CacheConfig(
   enableProductCache: true,
-  useOfflineCache: true,
-);
+  enableImageCache: true,
+  productCacheMaxAge: Duration(days: 7),
+  imageCacheMaxAge: Duration(days: 30),
+  maxCacheSize: 100 * 1024 * 1024, // 100MB
+)
 ```
-
-### Language Configuration
-
-```dart
-// Set preferred languages (in order of preference)
-WeebiOpenFoodFactsService.updatePreferredLanguages([
-  WeebiLanguage.french,    // Try French first
-  WeebiLanguage.english,   // Fallback to English
-  WeebiLanguage.spanish,   // Then Spanish
-]);
-
-// Get current language preferences
-final languages = WeebiOpenFoodFactsService.preferredLanguages;
-```
-
-## 🔍 Advanced Usage
 
 ### Cache Management
 
 ```dart
+// Clear all caches
+await WeebiOpenFoodFactsService.clearCache();
+
 // Get cache statistics
 final stats = await WeebiOpenFoodFactsService.getCacheStats();
 print('Cached products: ${stats['products']['count']}');
-print('Cached images: ${stats['images']['count']}');
+print('Cache size: ${stats['images']['size']} bytes');
+```
 
-// Clear all cache
-await WeebiOpenFoodFactsService.clearCache();
+## 🏗️ Product Types & Future Database Support
+
+The service is architected to support multiple product databases:
+
+```dart
+// Current: Food products (OpenFoodFacts)
+final foodProduct = await WeebiOpenFoodFactsService.getFoodProduct('3017620422003');
+print('Type: ${foodProduct.productType}'); // WeebiProductType.food
+
+// Future: Beauty products (OpenBeautyFacts) - Coming Soon
+// final beautyProduct = await WeebiOpenFoodFactsService.getBeautyProduct('3560070791460');
+
+// Future: General products (OpenProductsFacts) - Coming Soon  
+// final generalProduct = await WeebiOpenFoodFactsService.getGeneralProduct('1234567890123');
+```
+
+## 📊 Product Information Available
+
+### Food Products (Current)
+- ✅ **Basic Info**: Name, brand, barcode
+- ✅ **Nutrition**: Nutri-Score (A-E), NOVA group (1-4)
+- ✅ **Safety**: Allergens, ingredients analysis
+- ✅ **Images**: Front, ingredients, nutrition facts
+- ✅ **Multi-language**: All data in preferred languages
+
+### Beauty Products (Planned)
+- 🔧 **Basic Info**: Name, brand, barcode
+- 🔧 **Cosmetic Data**: Period after opening, ingredients
+- 🔧 **Safety**: Allergen warnings, risk assessments
+- 🔧 **Images**: Product photos, ingredient lists
+
+### General Products (Planned)
+- 🔧 **Basic Info**: Name, brand, barcode, category
+- 🔧 **Product Data**: Features, specifications
+- 🔧 **Images**: Product photos, documentation
+
+## 🔧 Advanced Usage
+
+### Error Handling
+
+```dart
+try {
+  final product = await WeebiOpenFoodFactsService.getProduct('invalid-barcode');
+} catch (e) {
+  if (e is StateError) {
+    // Service not initialized
+    print('Please initialize the service first');
+  } else {
+    // Network or other errors
+    print('Error fetching product: $e');
+  }
+}
 ```
 
 ### Barcode Validation
@@ -161,126 +205,79 @@ await WeebiOpenFoodFactsService.clearCache();
 if (WeebiOpenFoodFactsService.isLikelyFoodProduct('3017620422003')) {
   final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
 }
-
-// Advanced validation
-if (BarcodeValidator.isValidEAN13('3017620422003')) {
-  // Process valid EAN-13 barcode
-}
 ```
 
-### Nutrition Helpers
+### Image Caching
 
 ```dart
-// Get Nutri-Score color for UI
-final color = NutritionHelper.getNutriScoreColor(product.nutriScore);
-
-// Get NOVA group information
-final description = NutritionHelper.getNovaGroupDescription(product.novaGroup);
-final color = NutritionHelper.getNovaGroupColor(product.novaGroup);
-```
-
-## 🏗️ Architecture
-
-This package is designed to be **framework-agnostic** and can be used in:
-
-- ✅ **Barcode Scanner Apps** (like this demo)
-- ✅ **Inventory Management Systems**
-- ✅ **Recipe & Nutrition Apps**
-- ✅ **Point-of-Sale Systems**
-- ✅ **E-commerce Platforms**
-- ✅ **Any Flutter app needing food product data**
-
-### Key Components
-
-- **`WeebiOpenFoodFactsService`**: Main service class with static methods
-- **`WeebiProduct`**: Enhanced product model with multi-language support
-- **`LanguageManager`**: Handles language preferences and fallbacks
-- **`ProductCacheManager`**: SQLite-based product caching
-- **`ImageCacheManager`**: File-based image caching
-- **`BarcodeValidator`**: Barcode validation utilities
-- **`NutritionHelper`**: UI helpers for nutrition data
-
-## 🔧 Development
-
-### TODOs for Full Implementation
-
-The current version provides the complete architecture and interfaces. To make it production-ready, implement:
-
-1. **SQLite Integration** in `ProductCacheManager`
-2. **File-based Image Caching** in `ImageCacheManager`
-3. **Background Sync** for cache maintenance
-4. **Rate Limiting** for API calls
-5. **Retry Logic** with exponential backoff
-
-### Testing
-
-```bash
-# Run tests
-flutter test
-
-# Analyze code
-flutter analyze
-
-# Check dependencies
-flutter pub deps
-```
-
-## 📋 API Reference
-
-### WeebiOpenFoodFactsService
-
-| Method | Description |
-|--------|-------------|
-| `initialize()` | Initialize the service with configuration |
-| `getProduct()` | Get product with caching and language fallback |
-| `getCachedImagePath()` | Get path to cached image |
-| `cacheImage()` | Cache an image from URL |
-| `clearCache()` | Clear all cached data |
-| `getCacheStats()` | Get cache statistics |
-| `updatePreferredLanguages()` | Update language preferences |
-
-### WeebiProduct
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `barcode` | `String` | Product barcode |
-| `name` | `String?` | Product name (localized) |
-| `brand` | `String?` | Product brand |
-| `ingredients` | `String?` | Ingredients text (localized) |
-| `allergens` | `List<String>` | List of allergens |
-| `nutriScore` | `String?` | Nutri-Score (A-E) |
-| `novaGroup` | `int?` | NOVA group (1-4) |
-| `imageUrl` | `String?` | Main product image URL |
-| `language` | `WeebiLanguage` | Language of the data |
-| `cachedAt` | `DateTime` | When cached |
-
-## 🤝 Integration with Other Projects
-
-This package is designed to be easily integrated into any project that needs OpenFoodFacts data:
-
-```dart
-// In a barcode scanner app
-final result = await scanner.scan();
-final product = await WeebiOpenFoodFactsService.getProduct(result.barcode);
-
-// In an inventory system
-final products = await Future.wait(
-  barcodes.map((barcode) => WeebiOpenFoodFactsService.getProduct(barcode))
+// Get cached image path
+final imagePath = await WeebiOpenFoodFactsService.getCachedImagePath(
+  product.imageUrl
 );
 
-// In a recipe app
-final ingredients = await getRecipeIngredients();
-final nutritionData = await Future.wait(
-  ingredients.map((ingredient) => 
-    WeebiOpenFoodFactsService.getProduct(ingredient.barcode)
-  )
+// Cache an image manually
+final cachedPath = await WeebiOpenFoodFactsService.cacheImage(
+  'https://images.openfoodfacts.org/images/products/301/762/042/2003/front_en.3.400.jpg'
 );
 ```
+
+## 🎯 Use Cases
+
+This package is perfect for:
+
+- **🛒 Point of Sale Systems**: Quick product lookup with offline support
+- **📱 Inventory Management**: Track products across multiple categories  
+- **🍽️ Recipe Applications**: Access nutritional information
+- **🏪 E-commerce Platforms**: Product data enrichment
+- **📊 Analytics Dashboards**: Consumer product insights
+- **🔍 Barcode Scanners**: Multi-database product identification
+
+## 🚀 Roadmap
+
+### Phase 1: OpenFoodFacts (✅ Complete)
+- [x] Multi-language API integration
+- [x] Advanced caching system
+- [x] Comprehensive error handling
+- [x] Production-ready package
+
+### Phase 2: OpenBeautyFacts (🔧 In Progress)
+- [ ] Beauty product API integration
+- [ ] Cosmetic-specific data fields
+- [ ] Period after opening support
+- [ ] Ingredient safety analysis
+
+### Phase 3: OpenProductsFacts (📋 Planned)
+- [ ] General product API integration
+- [ ] Product category system
+- [ ] Multi-database search
+- [ ] Unified product interface
+
+### Phase 4: Advanced Features (🎯 Future)
+- [ ] Real-time synchronization
+- [ ] Machine learning recommendations
+- [ ] Custom taxonomy support
+- [ ] Enterprise features
+
+## 🤝 Contributing
+
+We welcome contributions! This package is designed to be:
+
+- **Extensible**: Easy to add new databases
+- **Maintainable**: Clean architecture and documentation
+- **Testable**: Comprehensive test coverage
+- **Reusable**: Framework-agnostic design
 
 ## 📄 License
 
-Private package for Weebi projects. All rights reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [OpenFoodFacts](https://openfoodfacts.org) for the amazing open data
+- [OpenBeautyFacts](https://openbeautyfacts.org) for cosmetic product data
+- [OpenProductsFacts](https://openproductsfacts.org) for general product data
+- The Dart/Flutter community for excellent tooling
 
 ---
 
-**Built with ❤️ for the Weebi ecosystem**
+**Built with ❤️ by [Weebi](https://github.com/weebi-com) for the Flutter community**

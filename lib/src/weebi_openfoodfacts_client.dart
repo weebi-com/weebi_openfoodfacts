@@ -9,6 +9,9 @@ import 'image_cache_manager.dart';
 import 'utils/barcode_validator.dart';
 
 /// Advanced OpenFoodFacts client with multi-language support and caching
+/// 
+/// This service currently supports OpenFoodFacts (food products) with a foundation
+/// for future expansion to OpenBeautyFacts and OpenProductsFacts
 class WeebiOpenFoodFactsService {
   static bool _initialized = false;
   static late LanguageManager _languageManager;
@@ -57,6 +60,7 @@ class WeebiOpenFoodFactsService {
   }
 
   /// Get product information with multi-language support and caching
+  /// Currently supports OpenFoodFacts (food products)
   static Future<WeebiProduct?> getProduct(String barcode) async {
     if (!_initialized) {
       throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
@@ -105,7 +109,11 @@ class WeebiOpenFoodFactsService {
         final result = await off.OpenFoodAPIClient.getProductV3(configuration);
         
         if (result.status == off.ProductResultV3.statusSuccess && result.product != null) {
-          final weebiProduct = WeebiProduct.fromOpenFoodFacts(result.product!, language);
+          final weebiProduct = WeebiProduct.fromOpenFoodFacts(
+            result.product!, 
+            language, 
+            WeebiProductType.food, // Currently only food products
+          );
           
           // Cache the result
           if (_cacheConfig.enableProductCache) {
@@ -124,6 +132,11 @@ class WeebiOpenFoodFactsService {
     // If we reach here, product was not found in any language
     debugPrint('Product not found: $barcode');
     return null;
+  }
+
+  /// Get food product (alias for getProduct - current implementation)
+  static Future<WeebiProduct?> getFoodProduct(String barcode) {
+    return getProduct(barcode);
   }
 
   /// Get cached image file for a product image URL
