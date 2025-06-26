@@ -8,6 +8,7 @@ import 'product_cache_manager.dart';
 import 'image_cache_manager.dart';
 import 'open_prices_client.dart';
 import 'utils/barcode_validator.dart';
+import 'utils/credential_manager.dart';
 
 /// Advanced OpenFoodFacts client with multi-language support, caching, and pricing data
 /// 
@@ -24,6 +25,12 @@ class WeebiOpenFoodFactsService {
   static bool _enablePricing = true;
 
   /// Initialize the service with configuration
+  /// 
+  /// The service will automatically attempt to load credentials from:
+  /// - `open_prices_credentials.json` (for Open Prices API)
+  /// - `credentials.json` (for general credentials)
+  /// 
+  /// These files should be in your package root and added to .gitignore
   static Future<void> initialize({
     required String appName,
     String? appUrl,
@@ -31,8 +38,21 @@ class WeebiOpenFoodFactsService {
     CacheConfig cacheConfig = CacheConfig.production,
     bool enablePricing = true,
     String? openPricesAuthToken,
+    bool autoLoadCredentials = true,
+    String? packageRoot,
   }) async {
     if (_initialized) return;
+
+    // Load credentials automatically if enabled
+    if (autoLoadCredentials) {
+      await CredentialManager.loadAllCredentials(packageRoot: packageRoot);
+      
+      if (CredentialManager.hasOpenPricesCredentials) {
+        debugPrint('✅ Open Prices credentials loaded from file');
+      } else {
+        debugPrint('ℹ️  Open Prices credentials not found - template created');
+      }
+    }
 
     // Initialize OpenFoodFacts configuration
     off.OpenFoodAPIConfiguration.userAgent = off.UserAgent(
@@ -60,8 +80,22 @@ class WeebiOpenFoodFactsService {
     // Initialize Open Prices client
     if (_enablePricing) {
       _openPricesClient = OpenPricesClient();
-      if (openPricesAuthToken != null) {
-        _openPricesClient.setAuthToken(openPricesAuthToken);
+      
+      // Configure authentication from credentials
+      final authConfigured = await _openPricesClient.configureAuthentication();
+      
+      if (authConfigured) {
+        final authStatus = _openPricesClient.getAuthStatus();
+        final method = authStatus['auth_method'];
+        debugPrint('✅ Open Prices authentication configured ($method)');
+      } else {
+        // Try manual token if provided
+        if (openPricesAuthToken != null && openPricesAuthToken.isNotEmpty) {
+          _openPricesClient.setAuthToken(openPricesAuthToken);
+          debugPrint('✅ Open Prices authentication configured (manual API token)');
+        } else {
+          debugPrint('ℹ️  Open Prices running in read-only mode (no authentication)');
+        }
       }
     }
 
@@ -72,15 +106,73 @@ class WeebiOpenFoodFactsService {
 
     _initialized = true;
     final pricingStatus = _enablePricing ? 'with pricing' : 'without pricing';
-    debugPrint('WeebiOpenFoodFactsService initialized $pricingStatus and ${preferredLanguages.length} languages');
+    final authStatus = CredentialManager.hasOpenPricesAuthToken ? '(authenticated)' : '(read-only)';
+    debugPrint('🚀 WeebiOpenFoodFactsService initialized $pricingStatus $authStatus and ${preferredLanguages.length} languages');
   }
 
   /// Set Open Prices authentication token
   static void setOpenPricesAuthToken(String token) {
     if (_initialized && _enablePricing) {
       _openPricesClient.setAuthToken(token);
-      debugPrint('Open Prices authentication token updated');
+      debugPrint('✅ Open Prices authentication token updated');
     }
+  }
+
+  /// Load credentials from files
+  /// 
+  /// This can be called after initialization to reload credentials
+  static Future<bool> loadCredentials({String? packageRoot}) async {
+    try {
+      await CredentialManager.loadAllCredentials(packageRoot: packageRoot);
+      
+      if (_initialized && _enablePricing && CredentialManager.hasOpenPricesAuthToken) {
+        final token = CredentialManager.openPricesAuthToken!;
+        _openPricesClient.setAuthToken(token);
+        debugPrint('✅ Credentials reloaded and applied');
+        return true;
+      }
+      
+      return CredentialManager.hasOpenPricesCredentials;
+    } catch (e) {
+      debugPrint('❌ Error loading credentials: $e');
+      return false;
+    }
+  }
+
+  /// Get credential status information
+  static Map<String, dynamic> getCredentialStatus() {
+    final basicStatus = <String, dynamic>{
+      'credentials_loaded': CredentialManager.hasCredentials,
+      'open_prices_credentials_loaded': CredentialManager.hasOpenPricesCredentials,
+      'pricing_enabled': _enablePricing,
+    };
+    
+    if (_enablePricing && _initialized) {
+      final authStatus = _openPricesClient.getAuthStatus();
+      basicStatus.addAll({
+        'open_prices_authenticated': authStatus['authenticated'],
+        'open_prices_auth_method': authStatus['auth_method'],
+        'session_expired': authStatus['session_expired'],
+        'can_submit_prices': authStatus['authenticated'],
+      });
+      
+      // Add credential availability info
+      basicStatus.addAll({
+        'has_api_token': CredentialManager.hasOpenPricesAuthToken,
+        'has_login_credentials': CredentialManager.hasOpenPricesLoginCredentials,
+        'preferred_auth_method': CredentialManager.preferredAuthMethod.toString().split('.').last,
+      });
+    } else {
+      basicStatus.addAll({
+        'open_prices_authenticated': false,
+        'can_submit_prices': false,
+        'has_api_token': CredentialManager.hasOpenPricesAuthToken,
+        'has_login_credentials': CredentialManager.hasOpenPricesLoginCredentials,
+        'preferred_auth_method': CredentialManager.preferredAuthMethod.toString().split('.').last,
+      });
+    }
+    
+    return basicStatus;
   }
 
   /// Get product information with multi-language support, caching, and pricing data
@@ -355,6 +447,11 @@ class WeebiOpenFoodFactsService {
       return false;
     }
     
+    if (!CredentialManager.hasOpenPricesAuthToken) {
+      debugPrint('❌ Authentication required to submit prices. Please configure your Open Prices credentials.');
+      return false;
+    }
+    
     return await _openPricesClient.submitPrice(
       barcode: barcode,
       price: price,
@@ -381,6 +478,9 @@ class WeebiOpenFoodFactsService {
 
   /// Check if pricing is enabled
   static bool get isPricingEnabled => _initialized && _enablePricing;
+
+  /// Check if price submission is available (requires authentication)
+  static bool get canSubmitPrices => _initialized && _enablePricing && CredentialManager.hasOpenPricesAuthToken;
 
   /// Clear all caches
   static Future<void> clearCache() async {
@@ -423,5 +523,7 @@ class WeebiOpenFoodFactsService {
     if (_initialized && _enablePricing) {
       _openPricesClient.dispose();
     }
+    // Clear credentials from memory for security
+    CredentialManager.clearCredentials();
   }
 } 

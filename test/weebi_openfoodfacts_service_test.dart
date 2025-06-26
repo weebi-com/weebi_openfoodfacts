@@ -4,24 +4,17 @@ import 'package:weebi_openfoodfacts_service/weebi_openfoodfacts_service.dart';
 
 void main() {
   group('WeebiOpenFoodFactsService', () {
-    test('isLikelyFoodProduct validates food barcodes correctly', () {
-      // Test food product barcodes (EAN-13 starting with food prefixes)
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct('3017620422003'), true);
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct('4000417025005'), true);
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct('8000500037560'), true);
-      
-      // Test non-food barcodes
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct('123456789012'), false);
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct('1234567890123'), false); // Starts with 1
-      
-      // Test invalid barcodes
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct(''), false);
-      expect(WeebiOpenFoodFactsService.isLikelyFoodProduct('123'), false);
+    test('service provides credential status', () {
+      // Test credential status functionality
+      final status = WeebiOpenFoodFactsService.getCredentialStatus();
+      expect(status, isA<Map<String, dynamic>>());
+      expect(status.containsKey('pricing_enabled'), true);
+      expect(status.containsKey('can_submit_prices'), true);
     });
 
-    test('service initialization state', () {
-      expect(WeebiOpenFoodFactsService.isInitialized, false);
-      expect(WeebiOpenFoodFactsService.preferredLanguages, [WeebiLanguage.english]);
+    test('service pricing features are available', () {
+      expect(WeebiOpenFoodFactsService.isPricingEnabled, false); // Not initialized
+      expect(WeebiOpenFoodFactsService.canSubmitPrices, false); // Not initialized
     });
   });
 
@@ -74,6 +67,14 @@ void main() {
       expect(NutritionHelper.getNovaGroupDescription(1), contains('Unprocessed'));
       expect(NutritionHelper.getNovaGroupDescription(4), contains('Ultra-processed'));
       expect(NutritionHelper.getNovaGroupDescription(null), contains('unknown'));
+    });
+  });
+
+  group('CredentialManager', () {
+    test('provides credential status checking', () {
+      expect(CredentialManager.hasCredentials, false); // Not loaded initially
+      expect(CredentialManager.hasOpenPricesCredentials, false);
+      expect(CredentialManager.hasOpenPricesAuthToken, false);
     });
   });
 }

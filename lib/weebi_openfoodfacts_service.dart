@@ -11,6 +11,7 @@
 /// - Advanced caching (product & image caching for offline support)
 /// - Framework-agnostic design for maximum reusability
 /// - Production-ready error handling and validation
+/// - Secure credential management with .gitignore support
 /// 
 /// Future expansion ready for:
 /// - OpenBeautyFacts (cosmetic products)
@@ -31,6 +32,7 @@ export 'src/models/cache_config.dart';
 // Utilities
 export 'src/utils/barcode_validator.dart';
 export 'src/utils/nutrition_helper.dart';
+export 'src/utils/credential_manager.dart';
 
 // Cache managers (for advanced usage)
 export 'src/product_cache_manager.dart';

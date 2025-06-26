@@ -3,9 +3,9 @@ import 'models/weebi_product.dart';
 
 /// Manages product caching using SQLite
 class ProductCacheManager {
-  final CacheConfig _config;
+  // final CacheConfig _config;
 
-  ProductCacheManager(this._config);
+  ProductCacheManager(CacheConfig config); // Accept but don't store config for now
 
   /// Initialize the cache database
   Future<void> initialize() async {

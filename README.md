@@ -22,6 +22,7 @@ A comprehensive, reusable Flutter package for integrating with OpenFoodFacts API
 - **🆕 Open Prices Integration**: Real-world pricing data from crowdsourced receipts
 - **Multi-Language Support**: 10+ languages with automatic fallbacks
 - **Advanced Caching**: Product and image caching for offline support
+- **🔐 Secure Credential Management**: Automatic credential loading with .gitignore support
 - **Framework-Agnostic**: Can be used in any Flutter project
 - **Production Ready**: Comprehensive error handling and validation
 
@@ -59,9 +60,96 @@ dependencies:
       ref: main
 ```
 
+## 🔐 Credential Setup (For Price Submission)
+
+The service works in **read-only mode** without credentials. For price submission capabilities, follow these steps:
+
+### 1. Create Your Credential File
+
+The service automatically looks for `open_prices_credentials.json` in your package root:
+
+```bash
+# In your project root, create the credential file:
+touch open_prices_credentials.json
+
+# Add it to .gitignore (IMPORTANT!)
+echo "open_prices_credentials.json" >> .gitignore
+```
+
+### 2. Get Your Open Prices API Credentials
+
+1. **Visit**: [https://prices.openfoodfacts.org](https://prices.openfoodfacts.org)
+2. **Create Account**: Sign up for a free account
+3. **Get API Token**: Generate an API token in your account settings
+4. **Note User ID**: Copy your user ID from your profile
+
+### 3. Configure Your Credentials
+
+Edit `open_prices_credentials.json`:
+
+```json
+{
+  "_comment": "Open Prices API Credentials - Keep this file secure and in .gitignore",
+  "open_prices": {
+    "auth_token": "your_actual_auth_token_here",
+    "api_url": "https://prices.openfoodfacts.org/api/v1",
+    "user_id": "your_actual_user_id",
+    "app_name": "YourAppName/1.0"
+  }
+}
+```
+
+### 4. Verify Setup
+
+```dart
+import 'package:weebi_openfoodfacts_service/weebi_openfoodfacts_service.dart';
+
+// Check credential status
+final status = WeebiOpenFoodFactsService.getCredentialStatus();
+print('Can submit prices: ${status['can_submit_prices']}'); // Should be true
+
+// Test price submission
+final success = await WeebiOpenFoodFactsService.submitPrice(
+  barcode: '3017620422003',
+  price: 3.45,
+  currency: 'EUR',
+  locationId: 'store_osm_id',
+);
+```
+
+### 📁 File Structure
+
+```
+your_project/
+├── pubspec.yaml
+├── .gitignore                        # MUST include credential files
+├── open_prices_credentials.json      # Your actual credentials (ignored by git)
+├── open_prices_credentials.json.example  # Safe template (can be committed)
+└── lib/
+    └── your_app.dart
+```
+
+### 🔒 Security Best Practices
+
+```bash
+# ✅ DO: Add credential files to .gitignore
+echo "open_prices_credentials.json" >> .gitignore
+echo "credentials.json" >> .gitignore
+echo ".env" >> .gitignore
+
+# ✅ DO: Use different credentials for different environments
+# Production: open_prices_credentials.json  
+# Development: open_prices_credentials.dev.json
+# Testing: open_prices_credentials.test.json
+
+# ❌ DON'T: Commit actual credentials to git
+# ❌ DON'T: Hard-code credentials in source code
+# ❌ DON'T: Share credential files via email/chat
+```
+
 ## 🛠️ Quick Start
 
-### 1. Initialize the Service
+### 1. Initialize the Service (Auto-loads Credentials)
 
 ```dart
 import 'package:weebi_openfoodfacts_service/weebi_openfoodfacts_service.dart';
@@ -76,8 +164,13 @@ await WeebiOpenFoodFactsService.initialize(
   ],
   cacheConfig: CacheConfig.production,
   enablePricing: true, // 🆕 Enable Open Prices integration
-  // openPricesAuthToken: 'your_token_here', // For submitting prices
+  autoLoadCredentials: true, // 🔐 Automatically load credentials from files
 );
+
+// Check what capabilities are available
+final status = WeebiOpenFoodFactsService.getCredentialStatus();
+print('Pricing enabled: ${status['pricing_enabled']}');
+print('Can submit prices: ${status['can_submit_prices']}');
 ```
 
 ### 2. Get Product with Pricing Information
@@ -229,6 +322,24 @@ print('Price: ${foodProduct.currentPrice}'); // 🆕 Real pricing data
 
 ## 🔧 Advanced Usage
 
+### Credential Management
+
+```dart
+// Manual credential loading (if autoLoadCredentials = false)
+final loaded = await WeebiOpenFoodFactsService.loadCredentials();
+print('Credentials loaded: $loaded');
+
+// Reload credentials after file changes
+await WeebiOpenFoodFactsService.loadCredentials();
+
+// Check credential status
+final status = WeebiOpenFoodFactsService.getCredentialStatus();
+print('Auth available: ${status['open_prices_auth_available']}');
+
+// Manual token setting (overrides file-based credentials)
+WeebiOpenFoodFactsService.setOpenPricesAuthToken('your_token');
+```
+
 ### Performance Optimization
 
 ```dart
@@ -261,10 +372,7 @@ try {
 ### 🆕 Price Submission (Requires Authentication)
 
 ```dart
-// Set authentication token
-WeebiOpenFoodFactsService.setOpenPricesAuthToken('your_auth_token');
-
-// Submit a new price
+// Submit a new price (requires credentials in open_prices_credentials.json)
 final success = await WeebiOpenFoodFactsService.submitPrice(
   barcode: '3017620422003',
   price: 3.45,
@@ -275,6 +383,8 @@ final success = await WeebiOpenFoodFactsService.submitPrice(
 
 if (success) {
   print('Price submitted successfully!');
+} else {
+  print('Failed to submit price - check credentials');
 }
 ```
 
@@ -313,6 +423,7 @@ This package is perfect for:
 - [x] **🆕 Open Prices integration**
 - [x] **🆕 Real-time pricing data**
 - [x] **🆕 Price history & statistics**
+- [x] **🔐 Secure credential management**
 - [x] Production-ready package
 
 ### Phase 2: OpenBeautyFacts (🔧 In Progress)

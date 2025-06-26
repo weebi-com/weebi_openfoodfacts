@@ -2,9 +2,9 @@ import 'models/cache_config.dart';
 
 /// Manages image caching to local storage
 class ImageCacheManager {
-  final CacheConfig _config;
+  // final CacheConfig _config;
 
-  ImageCacheManager(this._config);
+  ImageCacheManager(CacheConfig config); // Accept but don't store config for now
 
   /// Initialize the image cache
   Future<void> initialize() async {

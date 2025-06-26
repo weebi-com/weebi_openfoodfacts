@@ -267,7 +267,7 @@ class WeebiProduct {
 
   @override
   String toString() {
-    final priceInfo = currentPrice != null ? ' - ${currentPrice.toString()}' : '';
-    return '${name ?? 'Unknown Product'} (${barcode})$priceInfo';
+    final priceInfo = currentPrice != null ? ' - $currentPrice' : '';
+    return '${name ?? 'Unknown Product'} ($barcode)$priceInfo';
   }
 } 
