@@ -83,24 +83,12 @@ print('Available categories: ${categories.join(', ')}');
 - **Flexible Caching**: Database-aware caching system
 - **Scalable Design**: Easy to extend for new databases and features
 
-## 🚀 Current Database Support
-
-| Database | Products | Pricing | Status | Description |
-|----------|----------|---------|---------|-------------|
-| **OpenFoodFacts** | 2.9M+ | ✅ **Yes** | ✅ **Active** | Food products with nutrition + pricing data |
-| **OpenBeautyFacts** | 19K+ | 🔧 **Planned** | ✅ **Active** | Cosmetic and beauty products |
-| **OpenProductsFacts** | 11K+ | 🔧 **Planned** | 📋 **Planned** | General consumer products |
-
 ## 📦 Installation
 
 Add this to your `pubspec.yaml`:
 
 ```yaml
-dependencies:
-  weebi_openfoodfacts_service:
-    git:
-      url: https://github.com/weebi-com/weebi_openfoodfacts.git
-      ref: main
+  weebi_openfoodfacts_service: ^1.3.0
 ```
 
 ## 🔐 Credential Setup (Optional - Only for Pricing Features)
@@ -134,9 +122,9 @@ final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
 print('Product: ${product?.name}'); // Works without credentials!
 ```
 
-## 🚀 Roadmap
+## Integrations
 
-### Phase 1: OpenFoodFacts + Open Prices (✅ Complete)
+### OpenFoodFacts + Open Prices 
 - [x] Multi-language API integration
 - [x] Advanced caching system
 - [x] Comprehensive error handling
@@ -146,25 +134,17 @@ print('Product: ${product?.name}'); // Works without credentials!
 - [x] **🔐 Secure credential management**
 - [x] Production-ready package
 
-### Phase 2: OpenBeautyFacts
+### OpenBeautyFacts
 - [x] Beauty product API integration
 - [x] Cosmetic-specific data fields
 - [x] Period after opening support
 - [x] Ingredient safety analysis
 
-### Phase 3: OpenProductsFacts ✅
+### OpenProductsFacts
 - [x] General product API integration
 - [x] Product category system
 - [x] Multi-database search
 - [x] Unified product interface
-
-### Phase 4: Advanced Features (🎯 Future)
-- [ ] **🆕 Price alerts & notifications**
-- [ ] **🆕 Receipt scanning integration**
-- [ ] **🆕 Store loyalty program integration**
-- [ ] Machine learning recommendations
-- [ ] Custom taxonomy support
-- [ ] Enterprise features
 
 ## 📄 License
 

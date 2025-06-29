@@ -1,3 +1,7 @@
+## 1.3.1
+
+- README
+
 ## 1.3.0
 
 - only price API require credentials
