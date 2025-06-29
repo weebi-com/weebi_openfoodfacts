@@ -5,13 +5,24 @@
 /// and Open Prices integration for real-world pricing data.
 /// 
 /// Features:
-/// - OpenFoodFacts API integration (2.9M+ food products)
-/// - Open Prices API integration (crowdsourced pricing data)
+/// - OpenFoodFacts API integration (2.9M+ food products) - ✅ Works without credentials!
+/// - Open Prices API integration (crowdsourced pricing data) - Requires authentication
 /// - Multi-language support (10+ languages with automatic fallbacks)
 /// - Advanced caching (product & image caching for offline support)
 /// - Framework-agnostic design for maximum reusability
 /// - Production-ready error handling and validation
 /// - Secure credential management with .gitignore support
+/// 
+/// 🚀 Quick Start (No Credentials Required):
+/// ```dart
+/// await WeebiOpenFoodFactsService.initialize(
+///   appName: 'MyApp/1.0',
+///   enablePricing: false, // Disable pricing to work without credentials
+/// );
+/// 
+/// final product = await WeebiOpenFoodFactsService.getProduct('3017620422003');
+/// print('Product: ${product?.name}');
+/// ```
 /// 
 /// Future expansion ready for:
 /// - OpenBeautyFacts (cosmetic products)

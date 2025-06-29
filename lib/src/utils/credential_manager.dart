@@ -97,11 +97,13 @@ class CredentialManager {
       final template = {
         '_comment': 'Open Prices API Credentials - Keep this file secure and in .gitignore',
         '_security_warning': 'NEVER commit this file to git! Always add it to .gitignore',
+        '_important_note': 'OpenFoodFacts API works WITHOUT credentials! Only Open Prices requires authentication.',
         '_instructions': {
           '1': 'Use your OpenFoodFacts account credentials (same login for Open Prices)',
           '2': 'Replace the placeholder values below with your actual credentials',
           '3': 'Add "open_prices_credentials.json" to your .gitignore file',
-          '4': 'The service will automatically handle login authentication'
+          '4': 'The service will automatically handle login authentication',
+          '5': 'Basic product information works without any credentials'
         },
         'open_prices': {
           'username': 'your_openfoodfacts_username',
@@ -122,6 +124,14 @@ class CredentialManager {
             '2': 'Never commit this file to version control',
             '3': 'For production: use environment variables or secure storage',
             '4': 'This template can be safely shared (without actual credentials)'
+          },
+          'features_without_credentials': {
+            '1': '✅ Basic product information (name, brand, ingredients, etc.)',
+            '2': '✅ Product images and nutrition data',
+            '3': '✅ Multi-language support',
+            '4': '✅ Product caching',
+            '5': '❌ Pricing data (requires credentials)',
+            '6': '❌ Price history and statistics (requires credentials)'
           }
         }
       };
@@ -132,7 +142,8 @@ class CredentialManager {
       );
       
       debugPrint('Created Open Prices credential template: ${file.path}');
-      debugPrint('Please edit this file with your actual credentials');
+      debugPrint('ℹ️  Note: Basic product information works without credentials!');
+      debugPrint('ℹ️  Only pricing features require authentication.');
     } catch (e) {
       debugPrint('Error creating credential template: $e');
     }

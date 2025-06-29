@@ -27,10 +27,11 @@ class WeebiOpenFoodFactsService {
   /// Initialize the service with configuration
   /// 
   /// The service will automatically attempt to load credentials from:
-  /// - `open_prices_credentials.json` (for Open Prices API)
-  /// - `credentials.json` (for general credentials)
+  /// - `open_prices_credentials.json` (for Open Prices API - optional)
+  /// - `credentials.json` (for general credentials - optional)
   /// 
-  /// These files should be in your package root and added to .gitignore
+  /// These files should be in your package root and added to .gitignore.
+  /// Note: OpenFoodFacts API works without credentials, only Open Prices requires authentication.
   static Future<void> initialize({
     required String appName,
     String? appUrl,
@@ -43,18 +44,7 @@ class WeebiOpenFoodFactsService {
   }) async {
     if (_initialized) return;
 
-    // Load credentials automatically if enabled
-    if (autoLoadCredentials) {
-      await CredentialManager.loadAllCredentials(packageRoot: packageRoot);
-      
-      if (CredentialManager.hasOpenPricesCredentials) {
-        debugPrint('✅ Open Prices credentials loaded from file');
-      } else {
-        debugPrint('ℹ️  Open Prices credentials not found - template created');
-      }
-    }
-
-    // Initialize OpenFoodFacts configuration
+    // Initialize OpenFoodFacts configuration (works without credentials)
     off.OpenFoodAPIConfiguration.userAgent = off.UserAgent(
       name: appName,
       url: appUrl,
@@ -77,7 +67,18 @@ class WeebiOpenFoodFactsService {
       await _imageCacheManager.initialize();
     }
 
-    // Initialize Open Prices client
+    // Load credentials only if pricing is enabled
+    if (_enablePricing && autoLoadCredentials) {
+      await CredentialManager.loadAllCredentials(packageRoot: packageRoot);
+      
+      if (CredentialManager.hasOpenPricesCredentials) {
+        debugPrint('✅ Open Prices credentials loaded from file');
+      } else {
+        debugPrint('ℹ️  Open Prices credentials not found - pricing features will be limited');
+      }
+    }
+
+    // Initialize Open Prices client only if pricing is enabled
     if (_enablePricing) {
       _openPricesClient = OpenPricesClient();
       
@@ -95,6 +96,7 @@ class WeebiOpenFoodFactsService {
           debugPrint('✅ Open Prices authentication configured (manual API token)');
         } else {
           debugPrint('ℹ️  Open Prices running in read-only mode (no authentication)');
+          debugPrint('ℹ️  You can still get product information, but pricing data will be limited');
         }
       }
     }
@@ -105,9 +107,19 @@ class WeebiOpenFoodFactsService {
     off.OpenFoodAPIConfiguration.globalCountry = off.OpenFoodFactsCountry.FRANCE;
 
     _initialized = true;
+    
+    // Log initialization status
     final pricingStatus = _enablePricing ? 'with pricing' : 'without pricing';
-    final authStatus = CredentialManager.hasOpenPricesAuthToken ? '(authenticated)' : '(read-only)';
+    final authStatus = _enablePricing 
+        ? (CredentialManager.hasOpenPricesAuthToken ? '(authenticated)' : '(read-only)')
+        : '(disabled)';
     debugPrint('🚀 WeebiOpenFoodFactsService initialized $pricingStatus $authStatus and ${preferredLanguages.length} languages');
+    
+    // Provide helpful information about capabilities
+    if (_enablePricing && !CredentialManager.hasOpenPricesAuthToken) {
+      debugPrint('ℹ️  To enable full pricing features, add credentials to open_prices_credentials.json');
+      debugPrint('ℹ️  Basic product information is available without credentials');
+    }
   }
 
   /// Set Open Prices authentication token
@@ -348,7 +360,13 @@ class WeebiOpenFoodFactsService {
     }
     
     if (!_enablePricing) {
-      debugPrint('Pricing is disabled');
+      debugPrint('ℹ️  Pricing is disabled. Use getProduct() for basic product information.');
+      return null;
+    }
+    
+    if (!CredentialManager.hasOpenPricesAuthToken) {
+      debugPrint('ℹ️  No Open Prices credentials found. Pricing data requires authentication.');
+      debugPrint('ℹ️  Use getProduct() for basic product information without pricing.');
       return null;
     }
     
@@ -367,7 +385,13 @@ class WeebiOpenFoodFactsService {
     }
     
     if (!_enablePricing) {
-      debugPrint('Pricing is disabled');
+      debugPrint('ℹ️  Pricing is disabled. Use getProduct() for basic product information.');
+      return [];
+    }
+    
+    if (!CredentialManager.hasOpenPricesAuthToken) {
+      debugPrint('ℹ️  No Open Prices credentials found. Pricing data requires authentication.');
+      debugPrint('ℹ️  Use getProduct() for basic product information without pricing.');
       return [];
     }
     
@@ -386,7 +410,13 @@ class WeebiOpenFoodFactsService {
     }
     
     if (!_enablePricing) {
-      debugPrint('Pricing is disabled');
+      debugPrint('ℹ️  Pricing is disabled. Use getProduct() for basic product information.');
+      return null;
+    }
+    
+    if (!CredentialManager.hasOpenPricesAuthToken) {
+      debugPrint('ℹ️  No Open Prices credentials found. Pricing data requires authentication.');
+      debugPrint('ℹ️  Use getProduct() for basic product information without pricing.');
       return null;
     }
     
@@ -525,5 +555,48 @@ class WeebiOpenFoodFactsService {
     }
     // Clear credentials from memory for security
     CredentialManager.clearCredentials();
+  }
+
+  /// Check if pricing features are available
+  static bool get isPricingAvailable {
+    return _initialized && _enablePricing && CredentialManager.hasOpenPricesAuthToken;
+  }
+
+  /// Check if basic product information is available (always true if initialized)
+  static bool get isBasicProductInfoAvailable {
+    return _initialized;
+  }
+
+  /// Get a summary of available features
+  static Map<String, bool> getAvailableFeatures() {
+    return {
+      'basic_product_info': isBasicProductInfoAvailable,
+      'pricing_data': isPricingAvailable,
+      'price_history': isPricingAvailable,
+      'price_statistics': isPricingAvailable,
+      'product_caching': _initialized && _cacheConfig.enableProductCache,
+      'image_caching': _initialized && _cacheConfig.enableImageCache,
+      'multi_language': _initialized && _languageManager.preferredLanguages.length > 1,
+    };
+  }
+
+  /// Get helpful information about setting up credentials
+  static String getCredentialSetupInfo() {
+    if (isPricingAvailable) {
+      return '✅ Pricing features are available and working!';
+    } else if (_initialized && _enablePricing) {
+      return '''
+ℹ️  To enable pricing features:
+1. Create an account at https://openfoodfacts.org
+2. Add credentials to open_prices_credentials.json
+3. Restart your app
+
+Basic product information works without credentials.
+''';
+    } else if (_initialized) {
+      return 'ℹ️  Pricing is disabled. Basic product information is available.';
+    } else {
+      return '❌ Service not initialized. Call initialize() first.';
+    }
   }
 } 
