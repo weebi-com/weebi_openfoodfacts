@@ -7,6 +7,8 @@ import 'language_manager.dart';
 import 'product_cache_manager.dart';
 import 'image_cache_manager.dart';
 import 'open_prices_client.dart';
+import 'open_beauty_facts_client.dart';
+import 'open_products_facts_client.dart';
 import 'utils/barcode_validator.dart';
 import 'utils/credential_manager.dart';
 
@@ -21,8 +23,12 @@ class WeebiOpenFoodFactsService {
   static late ProductCacheManager _productCacheManager;
   static late ImageCacheManager _imageCacheManager;
   static late OpenPricesClient _openPricesClient;
+  static late OpenBeautyFactsClient _openBeautyFactsClient;
+  static late OpenProductsFactsClient _openProductsFactsClient;
   static late CacheConfig _cacheConfig;
   static bool _enablePricing = true;
+  static bool _enableBeautyProducts = true;
+  static bool _enableGeneralProducts = true;
 
   /// Initialize the service with configuration
   /// 
@@ -38,6 +44,8 @@ class WeebiOpenFoodFactsService {
     List<WeebiLanguage> preferredLanguages = const [WeebiLanguage.english],
     CacheConfig cacheConfig = CacheConfig.production,
     bool enablePricing = true,
+    bool enableBeautyProducts = true,
+    bool enableGeneralProducts = true,
     String? openPricesAuthToken,
     bool autoLoadCredentials = true,
     String? packageRoot,
@@ -53,6 +61,8 @@ class WeebiOpenFoodFactsService {
     // Store configuration
     _cacheConfig = cacheConfig;
     _enablePricing = enablePricing;
+    _enableBeautyProducts = enableBeautyProducts;
+    _enableGeneralProducts = enableGeneralProducts;
 
     // Initialize managers
     _languageManager = LanguageManager(preferredLanguages);
@@ -76,6 +86,18 @@ class WeebiOpenFoodFactsService {
       } else {
         debugPrint('ℹ️  Open Prices credentials not found - pricing features will be limited');
       }
+    }
+
+    // Initialize Open Beauty Facts client
+    if (_enableBeautyProducts) {
+      _openBeautyFactsClient = OpenBeautyFactsClient();
+      debugPrint('✅ OpenBeautyFacts client initialized');
+    }
+
+    // Initialize Open Products Facts client
+    if (_enableGeneralProducts) {
+      _openProductsFactsClient = OpenProductsFactsClient();
+      debugPrint('✅ OpenProductsFacts client initialized');
     }
 
     // Initialize Open Prices client only if pricing is enabled
@@ -340,6 +362,129 @@ class WeebiOpenFoodFactsService {
     return getProduct(barcode, location: location);
   }
 
+  /// Get beauty product from OpenBeautyFacts
+  static Future<WeebiProduct?> getBeautyProduct(String barcode) async {
+    if (!_initialized) {
+      throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
+    }
+
+    if (!_enableBeautyProducts) {
+      debugPrint('ℹ️  Beauty products are disabled. Use getProduct() for food products.');
+      return null;
+    }
+
+    // Validate barcode
+    if (!BarcodeValidator.isValid(barcode)) {
+      debugPrint('Invalid barcode: $barcode');
+      return null;
+    }
+
+    // Check cache first
+    if (_cacheConfig.enableProductCache) {
+      final cachedProduct = await _productCacheManager.getProduct(barcode);
+      if (cachedProduct != null && cachedProduct.productType == WeebiProductType.beauty) {
+        debugPrint('Beauty product found in cache: $barcode');
+        return cachedProduct;
+      }
+    }
+
+    // Try to fetch from OpenBeautyFacts with language fallback
+    for (final language in _languageManager.preferredLanguages) {
+      try {
+        debugPrint('Fetching beauty product $barcode in ${language.displayName}');
+        
+        final beautyProductData = await _openBeautyFactsClient.getBeautyProduct(barcode);
+        
+        if (beautyProductData != null) {
+          final weebiProduct = _openBeautyFactsClient.convertToWeebiProduct(
+            beautyProductData, 
+            language,
+          );
+          
+          if (weebiProduct != null) {
+            // Cache the result
+            if (_cacheConfig.enableProductCache) {
+              await _productCacheManager.cacheProduct(weebiProduct);
+            }
+            
+            debugPrint('Beauty product found: ${weebiProduct.name ?? 'Unknown'} (${language.displayName})');
+            return weebiProduct;
+          }
+        }
+      } catch (e) {
+        debugPrint('Error fetching beauty product in ${language.displayName}: $e');
+        continue; // Try next language
+      }
+    }
+
+    // If we reach here, beauty product was not found
+    debugPrint('Beauty product not found: $barcode');
+    return null;
+  }
+
+  /// Search beauty products
+  static Future<List<WeebiProduct>> searchBeautyProducts({
+    String? query,
+    String? brand,
+    String? category,
+    int limit = 20,
+  }) async {
+    if (!_initialized) {
+      throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
+    }
+
+    if (!_enableBeautyProducts) {
+      debugPrint('ℹ️  Beauty products are disabled.');
+      return [];
+    }
+
+    try {
+      final beautyProducts = await _openBeautyFactsClient.searchBeautyProducts(
+        query: query,
+        brand: brand,
+        category: category,
+        limit: limit,
+      );
+
+      final weebiProducts = <WeebiProduct>[];
+      for (final productData in beautyProducts) {
+        final weebiProduct = _openBeautyFactsClient.convertToWeebiProduct(
+          productData,
+          _languageManager.preferredLanguages.first,
+        );
+        
+        if (weebiProduct != null) {
+          weebiProducts.add(weebiProduct);
+        }
+      }
+
+      debugPrint('Found ${weebiProducts.length} beauty products');
+      return weebiProducts;
+    } catch (e) {
+      debugPrint('Error searching beauty products: $e');
+      return [];
+    }
+  }
+
+  /// Get beauty product categories
+  static Future<List<String>> getBeautyCategories() async {
+    if (!_initialized) {
+      throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
+    }
+
+    if (!_enableBeautyProducts) {
+      debugPrint('ℹ️  Beauty products are disabled.');
+      return [];
+    }
+
+    try {
+      return await _openBeautyFactsClient.getBeautyCategories();
+    } catch (e) {
+      debugPrint('Error fetching beauty categories: $e');
+      return [];
+    }
+  }
+
   /// Get product with pricing data specifically
   static Future<WeebiProduct?> getProductWithPricing(
     String barcode, {
@@ -571,6 +716,9 @@ class WeebiOpenFoodFactsService {
   static Map<String, bool> getAvailableFeatures() {
     return {
       'basic_product_info': isBasicProductInfoAvailable,
+      'food_products': _initialized,
+      'beauty_products': _initialized && _enableBeautyProducts,
+      'general_products': _initialized && _enableGeneralProducts,
       'pricing_data': isPricingAvailable,
       'price_history': isPricingAvailable,
       'price_statistics': isPricingAvailable,
@@ -597,6 +745,92 @@ Basic product information works without credentials.
       return 'ℹ️  Pricing is disabled. Basic product information is available.';
     } else {
       return '❌ Service not initialized. Call initialize() first.';
+    }
+  }
+
+  /// Get general product information by barcode
+  static Future<WeebiProduct?> getGeneralProduct(
+    String barcode, {
+    WeebiLanguage language = WeebiLanguage.english,
+  }) async {
+    if (!_initialized) {
+      throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
+    }
+
+    if (!_enableGeneralProducts) {
+      debugPrint('ℹ️  General products are disabled.');
+      return null;
+    }
+
+    if (!BarcodeValidator.isValid(barcode)) {
+      debugPrint('❌ Invalid barcode format: $barcode');
+      return null;
+    }
+
+    try {
+      final productData = await _openProductsFactsClient.getProduct(barcode);
+      if (productData != null) {
+        return _openProductsFactsClient.convertToWeebiProduct(productData, language);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting general product: $e');
+      return null;
+    }
+  }
+
+  /// Search general products
+  static Future<List<WeebiProduct>> searchGeneralProducts({
+    String? query,
+    String? brand,
+    String? category,
+    WeebiLanguage language = WeebiLanguage.english,
+    int limit = 20,
+  }) async {
+    if (!_initialized) {
+      throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
+    }
+
+    if (!_enableGeneralProducts) {
+      debugPrint('ℹ️  General products are disabled.');
+      return [];
+    }
+
+    try {
+      final productsData = await _openProductsFactsClient.searchProducts(
+        query: query,
+        brand: brand,
+        category: category,
+        limit: limit,
+      );
+
+      return productsData
+          .map((data) => _openProductsFactsClient.convertToWeebiProduct(data, language))
+          .where((product) => product != null)
+          .cast<WeebiProduct>()
+          .toList();
+    } catch (e) {
+      debugPrint('❌ Error searching general products: $e');
+      return [];
+    }
+  }
+
+  /// Get general product categories
+  static Future<List<String>> getGeneralCategories() async {
+    if (!_initialized) {
+      throw StateError('WeebiOpenFoodFactsService not initialized. Call initialize() first.');
+    }
+
+    if (!_enableGeneralProducts) {
+      debugPrint('ℹ️  General products are disabled.');
+      return [];
+    }
+
+    try {
+      return await _openProductsFactsClient.getProductCategories();
+    } catch (e) {
+      debugPrint('❌ Error getting general categories: $e');
+      return [];
     }
   }
 } 

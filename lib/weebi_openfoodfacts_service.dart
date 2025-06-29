@@ -35,6 +35,9 @@ export 'src/weebi_openfoodfacts_client.dart';
 // Open Prices integration
 export 'src/open_prices_client.dart';
 
+// Open Beauty Facts integration
+export 'src/open_beauty_facts_client.dart';
+
 // Models
 export 'src/models/weebi_product.dart';
 export 'src/models/weebi_language.dart';

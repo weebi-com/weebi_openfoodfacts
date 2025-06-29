@@ -1,3 +1,9 @@
+## 1.3.0
+
+- only price API require credentials
+- + beauty API
+- + products API
+
 ## 1.2.0
 ## 1.1.0
 
